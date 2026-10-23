@@ -14,7 +14,7 @@ namespace EnemyCritFix
     [BepInDependency(RecalculateStatsAPI.PluginGUID)]
 
     // Metadata
-    [BepInPlugin("Samuel17.EnemyCritFix", "EnemyCritFix", "1.0.0")]
+    [BepInPlugin("Samuel17.EnemyCritFix", "EnemyCritFix", "1.0.1")]
 
     public class Main : BaseUnityPlugin
     {
@@ -103,6 +103,32 @@ namespace EnemyCritFix
                 if (self.attack != null)
                 {
                     self.attack.isCrit = self.RollCrit();
+                }
+            };
+
+            // Lynx Berserker slam
+            IL.EntityStates.Lynx2Monster.FrenziedUpsetPoundSlamState.DetonateAuthority += (il) =>
+            {
+                ILCursor c = new(il);
+                bool hookFailed = true;
+
+                if (
+                    c.TryGotoNext(MoveType.After,
+                    x => x.MatchStfld<BlastAttack>("baseDamage"))
+                )
+                {
+                    c.Emit(OpCodes.Ldarg_0);
+                    c.Emit<EntityStates.Lynx2Monster.FrenziedUpsetPoundSlamState>(OpCodes.Ldfld, nameof(EntityStates.Lynx2Monster.FrenziedUpsetPoundSlamState.attack));
+                    c.Emit(OpCodes.Ldarg_0);
+                    c.Emit<BaseState>(OpCodes.Call, nameof(BaseState.RollCrit));
+                    c.Emit<BlastAttack>(OpCodes.Stfld, nameof(BlastAttack.crit));
+
+                    hookFailed = false;
+                }
+
+                if (hookFailed == true)
+                {
+                    Log.Error("Lynx Berserker slam crit hook failed!");
                 }
             };
 
@@ -263,6 +289,42 @@ namespace EnemyCritFix
                 }
             };
 
+            // Lynx Totem slam
+            On.EntityStates.Totem.GroundPound.OnEnter += (orig, self) =>
+            {
+                orig(self);
+
+                if (self._attack != null)
+                {
+                    self._attack.crit = self.RollCrit();
+                }
+            };
+
+            // Lynx Totem pillar (direct hit)
+            IL.EntityStates.Totem.PillarAttack.GetPillarAttack += (il) =>
+            {
+                ILCursor c = new(il);
+                bool hookFailed = true;
+
+                if (
+                    c.TryGotoNext(MoveType.After,
+                    x => x.MatchStfld<BlastAttack>("baseDamage"))
+                )
+                {
+                    c.Emit(OpCodes.Dup);
+                    c.Emit(OpCodes.Ldarg_0);
+                    c.Emit<BaseState>(OpCodes.Call, nameof(BaseState.RollCrit));
+                    c.Emit<BlastAttack>(OpCodes.Stfld, nameof(BlastAttack.crit));
+
+                    hookFailed = false;
+                }
+
+                if (hookFailed == true)
+                {
+                    Log.Error("Lynx Totem pillar crit hook failed!");
+                }
+            };
+
             // Xi Construct laser finisher
             IL.EntityStates.MajorConstruct.Weapon.TerminateLaser.OnEnter += (il) =>
             {
@@ -392,6 +454,32 @@ namespace EnemyCritFix
                 }
             };
 
+            // Shruum landing attack
+            IL.EntityStates.BigMush.Regrowth.FireLandingBlastAttack += (il) =>
+            {
+                ILCursor c = new(il);
+                bool hookFailed = true;
+
+                if (
+                    c.TryGotoNext(MoveType.After,
+                    x => x.MatchStfld<BlastAttack>("baseDamage"))
+                )
+                {
+                    c.Emit(OpCodes.Ldarg_0);
+                    c.Emit<EntityStates.BigMush.Regrowth>(OpCodes.Ldfld, nameof(EntityStates.BigMush.Regrowth._landingBlastAttack));
+                    c.Emit(OpCodes.Ldarg_0);
+                    c.Emit<BaseState>(OpCodes.Call, nameof(BaseState.RollCrit));
+                    c.Emit<BlastAttack>(OpCodes.Stfld, nameof(BlastAttack.crit));
+
+                    hookFailed = false;
+                }
+
+                if (hookFailed == true)
+                {
+                    Log.Error("Shruum landing attack crit hook failed!");
+                }
+            };
+
             // Mithrix hammer slam (direct)
             IL.EntityStates.BrotherMonster.WeaponSlam.OnEnter += (il) =>
             {
@@ -443,7 +531,7 @@ namespace EnemyCritFix
                 }
             };
 
-            // Generic contact damage (includes Magma Worm & Overloading Worm)
+            // Generic contact damage (includes Magma Worm, Overloading Worm & Shruum)
             IL.RoR2.ContactDamage.FireOverlaps += (il) =>
             {
                 ILCursor c = new(il);
